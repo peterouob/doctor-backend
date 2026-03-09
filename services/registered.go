@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/peterouob/doctor-backend/database/cache"
-	registeredModel "github.com/peterouob/doctor-backend/model/registered"
+	registeredModel "github.com/peterouob/doctor-backend/model"
 )
 
 var luaScript = `

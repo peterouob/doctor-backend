@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	registeredModel "github.com/peterouob/doctor-backend/model/registered"
+	registeredModel "github.com/peterouob/doctor-backend/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

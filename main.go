@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/peterouob/doctor-backend/database/cache"
 	"github.com/peterouob/doctor-backend/database/db"
-	"github.com/peterouob/doctor-backend/service/registered/internal/router"
+	"github.com/peterouob/doctor-backend/router"
 )
 
 func main() {

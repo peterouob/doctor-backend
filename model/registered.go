@@ -1,4 +1,4 @@
-package registeredModel
+package model
 
 import (
 	"time"
@@ -16,20 +16,21 @@ type RegisteredModel struct {
 type DoctorModel struct {
 	ID        uint       `json:"id" gorm:"primarykey"`
 	Name      string     `json:"name"`
+	Password  string     `json:"password"`
 	Primaries []Primary  `gorm:"foreignKey:DoctorID"`
 	Times     []Schedule `gorm:"foreignKey:DoctorID"`
 }
 
 type Primary struct {
-	ID       uint
-	DoctorID uint
-	Skill    string
+	ID       uint   `json:"-" gorm:"primarykey"`
+	DoctorID uint   `json:"-"`
+	Skill    string `json:"skill"`
 }
 
 type Schedule struct {
-	ID       uint
-	DoctorID uint
-	Time     time.Time
+	ID       uint      `json:"-" gorm:"primarykey"`
+	DoctorID uint      `json:"-"`
+	Time     time.Time `json:"time"`
 }
 
 type Patient struct {
