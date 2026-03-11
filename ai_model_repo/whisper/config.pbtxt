@@ -1,0 +1,27 @@
+name: "whisper"
+backend: "python"
+max_batch_size: 0        # ← 改成 0，表示不使用自動 batching
+
+input [
+  {
+    name: "AUDIO_SIGNAL"
+    data_type: TYPE_FP32
+    dims: [ -1 ]
+  }
+]
+
+output [
+  {
+    name: "TRANSCRIPT"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  }
+]
+
+# max_batch_size: 0 時，dynamic_batching 要拿掉
+instance_group [
+  {
+    count: 1
+    kind: KIND_CPU
+  }
+]

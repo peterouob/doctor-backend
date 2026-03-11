@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>醫療語音輸入測試</title>
+</head>
+<body>
+<h2>醫療病歷語音轉譯 (16kHz PCM WebSocket)</h2>
+<button id="startBtn">開始錄音</button>
+<button id="stopBtn" disabled>停止錄音</button>
+<p>狀態: <span id="status">未連線</span></p>
+<div id="transcriptBox" style="border:1px solid #ccc; height:300px; padding:10px; overflow-y:scroll;"></div>
+
+<script>
+    let ws;
+    let audioContext;
+    let processor;
+    let mediaStream;
+
+    const statusEl = document.getElementById('status');
+    const transcriptBox = document.getElementById('transcriptBox');
+
+    document.getElementById('startBtn').onclick = async () => {
+        // 1. 建立 WebSocket 連線
+        ws = new WebSocket('ws://localhost:8081/ws?session_id=test-doc-001');
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = () => statusEl.innerText = "WebSocket 已連線";
+        console.log(ws)
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.is_final === false) {
+                // 收到草稿：不斷覆蓋 draftBox 的內容，產生「字正在一個個跳出來」的視覺效果
+                draftBox.innerText = data.transcript;
+            } else if (data.is_final === true) {
+                // 收到最終結果：把草稿清空，並將正式文字附加到 transcriptBox
+                draftBox.innerText = "";
+                transcriptBox.innerHTML += `<p><strong>醫生:</strong> ${data.transcript}</p>`;
+                transcriptBox.scrollTop = transcriptBox.scrollHeight;
+            }
+        };
+
+        // 2. 請求麥克風權限，強制 16kHz 單聲道
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: { sampleRate: 16000, channelCount: 1 }
+        });
+
+        audioContext = new AudioContext({ sampleRate: 16000 });
+        const source = audioContext.createMediaStreamSource(mediaStream);
+
+        // 緩衝區大小 4096 (約 256ms 送一次資料，適合串流)
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+        processor.onaudioprocess = (e) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                const float32Array = e.inputBuffer.getChannelData(0);
+                // 轉為 16-bit PCM
+                const int16Array = new Int16Array(float32Array.length);
+                for (let i = 0; i < float32Array.length; i++) {
+                    int16Array[i] = Math.max(-1, Math.min(1, float32Array[i])) * 0x7FFF;
+                }
+                // 發送二進位資料
+                ws.send(int16Array.buffer);
+            }
+        };
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+    };
+
+    document.getElementById('stopBtn').onclick = () => {
+        if (processor) processor.disconnect();
+        if (audioContext) audioContext.close();
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        if (ws) ws.close();
+
+        statusEl.innerText = "已停止錄音並斷開連線";
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+    };
+</script>
+</body>
+</html>
