@@ -37,11 +37,9 @@ func (s *ScribeConsumer) Start(ctx context.Context, topic string) {
 	}
 
 	for {
-		// Consume returns when a rebalance happens or the context is cancelled
 		if err := s.group.Consume(ctx, []string{topic}, handler); err != nil {
 			log.Printf("Error from consumer group: %v", err)
 		}
-		// Check if context was cancelled, signaling that the consumer should stop
 		if ctx.Err() != nil {
 			return
 		}
@@ -68,14 +66,12 @@ func (h *scribeGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 			continue
 		}
 
-		// Run refinement via ScribeAgent (Eino Chain)
 		_, err := h.agent.Run(session.Context(), &ScribeInput{Transcription: event.Transcript})
 		if err != nil {
 			log.Printf("failed to refine transcription: %v", err)
 			continue
 		}
 
-		// Mark the message as processed in Kafka
 		session.MarkMessage(msg, "")
 	}
 	return nil

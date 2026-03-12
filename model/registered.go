@@ -35,15 +35,21 @@ type Schedule struct {
 
 type Patient struct {
 	gorm.Model
-	Name       string    `gorm:"index:idx_name"`
+	Name       string    `json:"name" gorm:"index:idx_name"`
+	Age        int       `json:"age"`
+	Gender     string    `json:"gender"`
+	History    string    `json:"history"`
+	Highlights string    `json:"highlights"` // Store as comma separated or JSON string
 	LastTime   time.Time `json:"last_time"`
 	LastDoctor string    `json:"last_doctor"`
-	Records    []Record  `gorm:"foreignKey:PatientID"`
+	Records    []Record  `json:"records" gorm:"foreignKey:PatientID"`
 }
 
 type Record struct {
 	gorm.Model
-	PatientID uint   `gorm:"index"`
-	Doctor    string `json:"doctor"`
-	Diagnosis string `json:"diagnosis"`
+	PatientID  uint   `json:"patient_id" gorm:"index"`
+	Doctor     string `json:"doctor"`
+	Transcript string `json:"transcript" gorm:"type:text"`
+	SOAP       string `json:"soap" gorm:"type:text"`
+	Diagnosis  string `json:"diagnosis"`
 }

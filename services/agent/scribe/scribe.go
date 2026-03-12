@@ -3,6 +3,7 @@ package scribe
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/eino/compose"
@@ -39,12 +40,23 @@ func NewScribeAgent(tritonClient *asr.TritonClient) *ScribeAgent {
 	return s
 }
 
-func (s *ScribeAgent) refineTranscription(ctx context.Context, input *ScribeInput) (*ScribeOutput, error) {
-	prompt := fmt.Sprintf(`You are a professional medical scribe. Please refine the following transcription to ensure correct medical terminology, grammar, and punctuation while preserving the original meaning.
-Output ONLY the refined text.
+func (s *ScribeAgent) refineTranscription(_ context.Context, input *ScribeInput) (*ScribeOutput, error) {
+	trimmed := strings.TrimSpace(input.Transcription)
+	if len(trimmed) < 2 {
+		return &ScribeOutput{RefinedText: input.Transcription}, nil
+	}
 
-Transcription: %s
-Refined:`, input.Transcription)
+	prompt := fmt.Sprintf(`You are a Medical Transcription Refinement Agent. Correct grammar, punctuation, and medical terminology.
+
+### RULES:
+1. **NO HALLUCINATION**: Do not add information not in the input.
+2. **NO CONVERSATION**: Output ONLY the refined text. No introductory or concluding remarks.
+3. **NO SUMMARIZATION**: Keep the original meaning exactly.
+
+### Transcription:
+%s
+
+### Refined:`, input.Transcription)
 
 	inferCtx, cancel := context.WithTimeout(context.Background(), LLMTimeout)
 	defer cancel()
@@ -57,8 +69,7 @@ Refined:`, input.Transcription)
 	return &ScribeOutput{RefinedText: refined}, nil
 }
 
-// Run 使用獨立 context，避免外層 WebSocket ctx 的 deadline 污染 chain
-func (s *ScribeAgent) Run(ctx context.Context, input *ScribeInput) (*ScribeOutput, error) {
+func (s *ScribeAgent) Run(_ context.Context, input *ScribeInput) (*ScribeOutput, error) {
 	chainCtx, cancel := context.WithTimeout(context.Background(), LLMTimeout)
 	defer cancel()
 

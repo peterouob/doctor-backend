@@ -54,7 +54,7 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 			for asrEvent := range resultStreamC {
 				eventBytes, err := json.Marshal(asrEvent)
 				if err != nil {
-					log.Printf("❌ Error marshalling ASREvent for Kafka: %v", err)
+					log.Printf("Error marshalling ASREvent for Kafka: %v", err)
 					continue
 				}
 
@@ -65,7 +65,6 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 				}
 
 				producer.Input() <- msg
-				log.Printf("📡 Sent ASREvent to Kafka (Topic: %s, Key: %s): %s", msg.Topic, doctorId, asrEvent.Transcript)
 
 				if err := conn.WriteJSON(asrEvent); err != nil {
 					log.Printf("❌ Error writing ASREvent to WebSocket: %v", err)
@@ -99,8 +98,6 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 
 				audioFloat32 := PcmBytesToFloat32(pcmBytes)
 				tritonPayload := Float32ToBytes(audioFloat32)
-				log.Printf("🎙 音訊封包: %d samples", len(audioFloat32))
-
 				select {
 				case audioStreamC <- tritonPayload:
 				default:
@@ -109,7 +106,6 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 		}
 
 		close(audioStreamC)
-		log.Printf("🔌 WebSocket connection closed for doctor: %s", doctorId)
 	}
 }
 

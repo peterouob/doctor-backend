@@ -54,7 +54,7 @@ func (c *TritonClient) InferWhisper(ctx context.Context, audioFloat32 []float32)
 		RawInputContents: [][]byte{audioBytes},
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	resp, err := c.client.ModelInfer(ctx, req)
@@ -110,10 +110,10 @@ func (c *TritonClient) InferLLM(ctx context.Context, prompt string) (string, err
 
 const (
 	SampleRate = 16000
-	WindowSecs = 5
-	StepSecs   = 2
+	WindowSecs = 4 // Reduced window for lower latency
+	StepSecs   = 4 // Non-overlapping window to prevent "sticky" repeats
 	MinSecs    = 1
-	SilenceRMS = float32(0.01)
+	SilenceRMS = float32(0.005) // Slightly more sensitive
 )
 
 func (c *TritonClient) StreamAudio(ctx context.Context, sessionID string, audioStreamChan <-chan []byte, resultStreamChan chan<- *model.ASREvent) {
@@ -163,14 +163,14 @@ func (c *TritonClient) inferAndSend(ctx context.Context, sessionID string, audio
 	// 1. ASR Inference (Whisper only)
 	transcript, err := c.InferWhisper(ctx, audio)
 	if err != nil {
-		log.Printf("⚠️ [Session %s] Whisper 推理失敗: %v", sessionID, err)
+		log.Printf("[Session %s] Whisper 推理失敗: %v", sessionID, err)
 		return
 	}
 	if transcript == "" {
 		return
 	}
 
-	log.Printf("✅ [Session %s] Raw: %s", sessionID, transcript)
+	log.Printf("[Session %s] Raw: %s", sessionID, transcript)
 
 	resultStreamChan <- &model.ASREvent{
 		EventID:     uuid.New().String(),
@@ -196,6 +196,5 @@ func isSilence(audio []float32) bool {
 		sum += v * v
 	}
 	rms := float32(math.Sqrt(float64(sum / float32(len(audio)))))
-	log.Printf("🔊 RMS: %.4f", rms)
 	return rms < SilenceRMS
 }

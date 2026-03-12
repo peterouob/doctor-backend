@@ -8,6 +8,7 @@ import (
 	"github.com/peterouob/doctor-backend/services/agent"
 	"github.com/peterouob/doctor-backend/services/asr"
 	"github.com/peterouob/doctor-backend/services/doctor"
+	"github.com/peterouob/doctor-backend/services/patient"
 )
 
 func InitRouter(r *gin.Engine, producer sarama.AsyncProducer, tritonClient *asr.TritonClient, agentHandler *agent.AgentHandler) {
@@ -31,6 +32,12 @@ func InitRouter(r *gin.Engine, producer sarama.AsyncProducer, tritonClient *asr.
 			c.JSON(200, gin.H{"message": "ok"})
 		})
 		mainGroup.POST("/synthesize", agentHandler.Synthesize)
+		mainGroup.POST("/analyze", agentHandler.Analyze)
+		mainGroup.POST("/run-agent", agentHandler.RunAgent)
 		mainGroup.POST("/process-todos", agentHandler.ProcessTodos)
+
+		// Patient routes
+		mainGroup.GET("/patients", patient.GetPatients)
+		mainGroup.POST("/save-consultation", patient.SaveConsultation)
 	}
 }
