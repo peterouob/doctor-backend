@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Noto+Sans:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased font-sans;
+  }
+  
+  ::selection {
+    background-color: #cffafe; /* medical-100 */
+    color: #164e63; /* medical-900 */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  /* Clean Professional Cards */
+  .card {
+    @apply bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.06)];
+  }
+  
+  /* Precision Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-medical-600 text-white text-sm font-semibold
+           rounded-lg hover:bg-medical-700 active:bg-medical-800 transition-colors duration-150 disabled:opacity-50
+           disabled:cursor-not-allowed shadow-sm cursor-pointer;
+  }
+  
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-slate-700 text-sm font-semibold
+           rounded-lg border border-slate-300 hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer;
+  }
+
+  /* Success/Action Button */
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-success-600 text-white text-sm font-semibold
+           rounded-lg hover:bg-success-700 active:bg-success-800 transition-colors duration-150 shadow-sm cursor-pointer;
+  }
+
+  /* Clinical Inputs */
+  .input {
+    @apply w-full px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-500
+           placeholder:text-slate-400 transition-all duration-150 shadow-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold tracking-tight;
+  }
+}
+
+/* Scrollbar Refinement */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; border: 2px solid white; }
+::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
