@@ -13,11 +13,15 @@ import (
 	"github.com/peterouob/doctor-backend/services/agent/scribe"
 	"github.com/peterouob/doctor-backend/services/agent/synthesizer"
 	"github.com/peterouob/doctor-backend/services/asr"
+	"github.com/peterouob/doctor-backend/services/patient"
 )
 
 func main() {
 	db.ConnMysql()
 	cache.ConnRedis()
+
+	// Initialize mock data
+	patient.InitMockPatients()
 
 	tritonAddr := "localhost:8001"
 	tritonClient, err := asr.NewTritonClient(tritonAddr)
@@ -43,7 +47,7 @@ func main() {
 	taskAgent := orchestrator.NewTaskAgent(tritonClient)
 	taskOrchestrator := orchestrator.NewOrchestrator(taskAgent)
 
-	agentHandler := agent.NewAgentHandler(synthesizerAgent, taskOrchestrator)
+	agentHandler := agent.NewAgentHandler(synthesizerAgent, taskAgent, taskOrchestrator)
 
 	r := gin.Default()
 	router.InitRouter(r, producer, tritonClient, agentHandler)
