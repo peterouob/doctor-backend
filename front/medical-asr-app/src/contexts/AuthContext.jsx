@@ -1,9 +1,27 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]   = useState(null);  // { id, name, token, loginAt }
+  // Try to load initial user from localStorage
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem("doctor_session");
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      console.error("Failed to parse stored session", e);
+      return null;
+    }
+  });
+
+  // Automatically save to localStorage when user changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("doctor_session", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("doctor_session");
+    }
+  }, [user]);
 
   /**
    * Called after successful POST /doctor/login
@@ -12,8 +30,8 @@ export function AuthProvider({ children }) {
    */
   const login = (doctor, token) => {
     setUser({
-      id:      doctor.ID   ?? doctor.id,
-      name:    doctor.Name ?? doctor.name,
+      id: doctor.ID ?? doctor.id,
+      name: doctor.Name ?? doctor.name,
       token,
       loginAt: Date.now(),
     });

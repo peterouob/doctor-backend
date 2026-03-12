@@ -30,42 +30,42 @@ function AgentRow({ agent }) {
   return (
     <div
       className={clsx(
-        "group flex items-center gap-4 p-4 rounded-xl border transition-all duration-150 animate-slide-up",
+        "group flex items-center gap-4 p-5 rounded-2xl border transition-all duration-300 animate-slide-up",
         agent.status === "done"
-          ? "border-emerald-100 bg-emerald-50/10 cursor-pointer hover:bg-emerald-50/30"
+          ? "border-emerald-100 bg-emerald-50/20 cursor-pointer hover:bg-emerald-50/40 hover:shadow-lg hover:shadow-emerald-100/20"
           : agent.status === "error"
-          ? "border-red-100 bg-red-50/10"
+          ? "border-red-100 bg-red-50/20"
           : agent.status === "running"
-          ? "border-medical-200 bg-white shadow-sm ring-1 ring-medical-500/5"
+          ? "border-medical-200 bg-white shadow-xl shadow-medical-100/10 ring-4 ring-medical-500/5"
           : "border-slate-100 bg-white/50"
       )}
       onClick={() => agent.status === "done" && navigate(`/agent/${agent.id}`)}
     >
       <div className={clsx(
-        "w-10 h-10 rounded-lg flex items-center justify-center text-xl shadow-sm transition-transform",
-        agent.status === "done" ? "bg-emerald-100/50" : 
-        agent.status === "running" ? "bg-medical-100/50" : 
+        "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm transition-all duration-300 group-hover:scale-110",
+        agent.status === "done" ? "bg-white shadow-emerald-100" : 
+        agent.status === "running" ? "bg-white shadow-medical-100" : 
         "bg-slate-100"
       )}>
         {meta.icon}
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-bold text-slate-800 tracking-tight">{meta.label}</p>
+      <div className="flex-1 min-w-0 ml-1">
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-sm font-black text-brand-900 tracking-tight">{meta.label}</p>
           {duration && (
-            <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-widest">
+            <span className="text-[9px] font-black text-slate-400 bg-slate-100/80 px-2 py-0.5 rounded-lg uppercase tracking-widest border border-slate-100">
               {duration}
             </span>
           )}
         </div>
-        <p className="text-[11px] text-slate-400 truncate mt-0.5 font-medium leading-none">REF: {agent.todoRef}</p>
+        <p className="text-[11px] text-slate-400 truncate font-bold leading-none uppercase tracking-tighter">REF: {agent.todoRef}</p>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="flex flex-col items-end gap-1">
-          <StatusIcon size={14} className={status.className} />
-          <span className={clsx("text-[9px] font-bold uppercase tracking-widest", {
+      <div className="flex items-center gap-4 shrink-0">
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusIcon size={16} className={status.className} />
+          <span className={clsx("text-[9px] font-black uppercase tracking-[0.2em]", {
             "text-slate-400": agent.status === "pending",
             "text-medical-600":  agent.status === "running",
             "text-emerald-600": agent.status === "done",
@@ -75,7 +75,7 @@ function AgentRow({ agent }) {
           </span>
         </div>
         {agent.status === "done" && (
-          <ArrowRight size={14} className="text-slate-300 group-hover:text-medical-500 transition-colors" />
+          <ArrowRight size={16} className="text-slate-300 group-hover:text-medical-600 transition-colors transform group-hover:translate-x-1 duration-300" />
         )}
       </div>
     </div>
@@ -92,45 +92,47 @@ export default function AgentStatusPanel() {
   const total   = agents.length;
 
   return (
-    <div className="card p-6 animate-fade-in bg-white border-slate-200">
-      <div className="flex items-center justify-between mb-6">
+    <div className="card p-8 animate-fade-in bg-white border-slate-200/40 shadow-2xl shadow-slate-200/30">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Terminal size={16} className="text-medical-600" />
+          <h3 className="text-sm font-black text-brand-900 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-medical-50 flex items-center justify-center text-medical-600">
+              <Terminal size={18} />
+            </div>
             AI Pipeline Engine
           </h3>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Real-time Clinical Processing</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2 ml-11">Real-time Clinical Processing</p>
         </div>
         {running > 0 && (
-          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-medical-50 border border-medical-100">
-            <span className="w-1.5 h-1.5 rounded-full bg-medical-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-medical-600 uppercase tracking-widest">Running</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-medical-50 border border-medical-100 shadow-sm shadow-medical-50">
+            <span className="w-2 h-2 rounded-full bg-medical-500 animate-pulse" />
+            <span className="text-[10px] font-black text-medical-600 uppercase tracking-widest">Processing</span>
           </div>
         )}
       </div>
 
       {/* Progress Section */}
-      <div className="mb-6">
-        <div className="flex justify-between items-end mb-1.5">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">系統總進度</span>
-          <span className="text-xs font-bold text-slate-900">{Math.round((done / total) * 100)}%</span>
+      <div className="mb-8 px-1">
+        <div className="flex justify-between items-end mb-3">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">系統總執行進度</span>
+          <span className="text-xs font-black text-brand-900 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">{Math.round((done / total) * 100)}%</span>
         </div>
-        <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-2.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100 p-0.5 shadow-inner">
           <div
-            className="h-full bg-medical-600 rounded-full transition-all duration-500 ease-out"
+            className="h-full bg-gradient-to-r from-medical-400 to-medical-600 rounded-full transition-all duration-700 ease-out shadow-lg shadow-medical-200"
             style={{ width: `${total ? (done / total) * 100 : 0}%` }}
           />
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {agents.map((a) => <AgentRow key={a.id} agent={a} />)}
       </div>
 
       {done === total && total > 0 && (
-        <div className="mt-6 pt-4 border-t border-slate-100">
-          <p className="text-[10px] text-center text-emerald-600 font-bold uppercase tracking-wider flex items-center justify-center gap-2">
-            <CheckCircle size={12} />
+        <div className="mt-8 pt-6 border-t border-slate-100">
+          <p className="text-[11px] text-center text-emerald-600 font-black uppercase tracking-[0.3em] flex items-center justify-center gap-3 bg-emerald-50/50 py-3 rounded-2xl border border-emerald-100 animate-fade-in">
+            <CheckCircle size={14} />
             Pipeline Task Complete
           </p>
         </div>

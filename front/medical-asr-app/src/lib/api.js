@@ -74,85 +74,37 @@ export async function authFetch(url, options = {}, authHeader = {}) {
 
 /**
  * Analyses todo items and routes them to specialist agents.
- *
- * TodoItem shape (from agent/model/model.go):
- *   { ID, Type, Priority, Detail }
- *
- * Returns: Array<{ type, label, todoRef, priority }>
  */
-export async function analyseTodos(todos) {
-  const formatted = todos
-    .map((t, i) => `${i + 1}. [Priority:${t.Priority}][Type:${t.Type}] ${t.Detail}`)
-    .join("\n");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+export async function analyseTodos(todos, authHeader) {
+  const res = await fetch(`${CONFIG.API_BASE}/main/analyze`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": CONFIG.ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01",
+      ...authHeader(),
     },
-    body: JSON.stringify({
-      model: CONFIG.ANTHROPIC_MODEL,
-      max_tokens: 1000,
-      system: `You are a medical workflow router.
-Given a list of doctor's TODO items (with Priority 1=highest and Type hints), assign each to the most appropriate specialist agent.
-Available agent types:
-- "summarize"  : Summarise patient notes or lab results
-- "diagnose"   : Differential diagnosis assistance
-- "schedule"   : Appointment or follow-up scheduling
-- "followup"   : Patient follow-up action items
-
-Respect the Priority field — higher priority tasks should be flagged.
-Respond ONLY with a JSON array, no markdown, no explanation.
-Each element: { "type": string, "label": string, "todoRef": string, "priority": number }
-"label" is a short human-readable task title (≤8 words).
-"todoRef" is the original Detail text verbatim.`,
-      messages: [{ role: "user", content: `TODOs:\n${formatted}` }],
-    }),
+    body: JSON.stringify(todos),
   });
 
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status}`);
-  const data = await res.json();
-  const raw = data.content?.[0]?.text || "[]";
+  if (!res.ok) throw new Error(`Analysis failed (${res.status})`);
+  const raw = await res.text();
   return JSON.parse(raw.replace(/```json|```/g, "").trim());
 }
 
 /**
  * Runs a single specialist agent.
- * Returns a markdown string.
  */
-export async function runAgent(type, todoRef) {
-  const prompts = {
-    summarize: `Summarise the following medical note in 3–4 concise bullet points for the attending physician.`,
-    diagnose:  `Provide a brief differential diagnosis (top 3) and suggested next steps based on this clinical note.`,
-    schedule:  `Draft a scheduling action plan with suggested timeframes for the following task.`,
-    followup:  `List concrete follow-up action items with priority levels (High/Medium/Low) for the following task.`,
-  };
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+export async function runAgent(type, todoRef, authHeader) {
+  const res = await fetch(`${CONFIG.API_BASE}/main/run-agent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": CONFIG.ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01",
+      ...authHeader(),
     },
-    body: JSON.stringify({
-      model: CONFIG.ANTHROPIC_MODEL,
-      max_tokens: 800,
-      system: `You are a specialist medical AI agent. Be concise and clinically precise. Use plain markdown.`,
-      messages: [
-        {
-          role: "user",
-          content: `${prompts[type] || prompts.followup}\n\nTask: ${todoRef}`,
-        },
-      ],
-    }),
+    body: JSON.stringify({ type, todoRef }),
   });
 
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text || "";
+  if (!res.ok) throw new Error(`Agent execution failed (${res.status})`);
+  return res.text();
 }
 
 /**
@@ -197,4 +149,39 @@ export async function processTodos(authHeader) {
     throw new Error(err.error || `Backend orchestration failed (${res.status})`);
   }
   return res.json(); // { items: TodoItem[], results: string[] }
+}
+
+/**
+ * Fetches the list of patients from the backend.
+ */
+export async function fetchPatients(authHeader) {
+  const res = await fetch(`${CONFIG.API_BASE}/main/patients`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader(),
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch patients (${res.status})`);
+  }
+  return res.json();
+}
+
+/**
+ * Saves a consultation record to the backend.
+ */
+export async function saveConsultation(payload, authHeader) {
+  const res = await fetch(`${CONFIG.API_BASE}/main/save-consultation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to save consultation (${res.status})`);
+  }
+  return res.json();
 }

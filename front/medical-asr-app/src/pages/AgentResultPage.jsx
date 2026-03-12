@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { useAgents } from "../contexts/AgentContext";
+import MarkdownResult from "../components/MarkdownResult";
 
 const TYPE_META = {
   summarize: { label: "病歷摘要",   icon: "📋", color: "blue" },
@@ -15,38 +16,6 @@ const COLOR_MAP = {
   amber:   "bg-amber-50 text-amber-700 border-amber-200",
   emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
-
-/** Very minimal markdown renderer — bold, bullets, headings */
-function MarkdownResult({ text }) {
-  const lines = text.split("\n");
-  return (
-    <div className="text-sm text-slate-700 leading-relaxed space-y-1.5">
-      {lines.map((line, i) => {
-        if (!line.trim()) return <br key={i} />;
-        if (line.startsWith("### ")) return <h3 key={i} className="font-semibold text-slate-800 mt-3">{line.slice(4)}</h3>;
-        if (line.startsWith("## "))  return <h2 key={i} className="text-base font-semibold text-slate-900 mt-4">{line.slice(3)}</h2>;
-        if (line.startsWith("# "))   return <h1 key={i} className="text-lg font-bold text-slate-900 mt-4">{line.slice(2)}</h1>;
-        if (line.match(/^[-*]\s/))   return (
-          <div key={i} className="flex items-start gap-2">
-            <span className="text-blue-400 mt-0.5 shrink-0">•</span>
-            <span>{line.slice(2)}</span>
-          </div>
-        );
-        // inline bold
-        const parts = line.split(/(\*\*[^*]+\*\*)/g);
-        return (
-          <p key={i}>
-            {parts.map((p, j) =>
-              p.startsWith("**") && p.endsWith("**")
-                ? <strong key={j} className="font-semibold text-slate-800">{p.slice(2, -2)}</strong>
-                : p
-            )}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function AgentResultPage() {
   const { agentId } = useParams();

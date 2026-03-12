@@ -1,30 +1,21 @@
-import { useCallback, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { processTodos } from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
 /**
- * Hook to trigger the Backend Eino Orchestrator
+ * Hook to trigger the Backend Eino Orchestrator using React Query Mutation
  */
 export function useBackendAgentRunner() {
   const { authHeader } = useAuth();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState(null);
-  const [results, setResults] = useState([]);
 
-  const runBackendOrchestration = useCallback(async () => {
-    setIsProcessing(true);
-    setError(null);
-    try {
-      const data = await processTodos(authHeader);
-      setResults(data.results || []);
-      return data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [authHeader]);
+  const mutation = useMutation({
+    mutationFn: () => processTodos(authHeader),
+  });
 
-  return { runBackendOrchestration, isProcessing, error, results };
+  return {
+    runBackendOrchestration: mutation.mutateAsync,
+    isProcessing: mutation.isPending,
+    error: mutation.error?.message || null,
+    results: mutation.data?.results || [],
+  };
 }

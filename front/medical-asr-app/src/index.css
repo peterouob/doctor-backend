@@ -5,60 +5,84 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 antialiased font-sans;
+    @apply bg-brand-50 text-slate-900 antialiased font-sans selection:bg-medical-100 selection:text-medical-900;
   }
   
   ::selection {
-    background-color: #cffafe; /* medical-100 */
-    color: #164e63; /* medical-900 */
+    @apply bg-medical-100 text-medical-900;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight;
+    @apply font-display tracking-tight text-brand-900;
   }
 }
 
 @layer components {
-  /* Clean Professional Cards */
+  /* Modern Soft UI Cards */
   .card {
-    @apply bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.06)];
+    @apply bg-white rounded-[2rem] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-300;
+  }
+
+  .card-interactive {
+    @apply card hover:shadow-[0_20px_40px_rgb(0,0,0,0.06)] hover:-translate-y-1 cursor-pointer;
+  }
+
+  /* Glassmorphism Utilities */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(8,145,178,0.05)] rounded-[2rem] transition-all duration-300;
+  }
+
+  .glass-navbar {
+    @apply sticky top-4 mx-4 z-50 bg-white/80 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(0,0,0,0.03)] rounded-2xl transition-all duration-300;
   }
   
-  /* Precision Buttons */
+  /* Refined Component Classes */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-medical-600 text-white text-sm font-semibold
-           rounded-lg hover:bg-medical-700 active:bg-medical-800 transition-colors duration-150 disabled:opacity-50
-           disabled:cursor-not-allowed shadow-sm cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 px-8 py-3 bg-medical-600 text-white text-sm font-bold
+           rounded-2xl hover:bg-medical-700 active:scale-[0.98] transition-all duration-200 disabled:opacity-50
+           disabled:cursor-not-allowed shadow-lg shadow-medical-200/50 cursor-pointer;
   }
   
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-slate-700 text-sm font-semibold
-           rounded-lg border border-slate-300 hover:bg-slate-50 active:bg-slate-100 transition-colors duration-150
+    @apply inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-slate-700 text-sm font-bold
+           rounded-2xl border border-slate-200 hover:bg-slate-50 active:scale-[0.98] transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer;
   }
 
-  /* Success/Action Button */
   .btn-success {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-success-600 text-white text-sm font-semibold
-           rounded-lg hover:bg-success-700 active:bg-success-800 transition-colors duration-150 shadow-sm cursor-pointer;
+    @apply inline-flex items-center justify-center gap-2 px-8 py-3 bg-success-500 text-white text-sm font-bold
+           rounded-2xl hover:bg-success-600 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-success-200/50 cursor-pointer;
   }
 
-  /* Clinical Inputs */
   .input {
-    @apply w-full px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg
-           focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-500
-           placeholder:text-slate-400 transition-all duration-150 shadow-sm;
+    @apply w-full px-5 py-3 text-sm bg-white border border-slate-200 rounded-2xl
+           focus:outline-none focus:ring-4 focus:ring-medical-500/10 focus:border-medical-500
+           placeholder:text-slate-400 transition-all duration-200 shadow-sm;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold tracking-tight;
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-tight;
   }
 }
 
-/* Scrollbar Refinement */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; border: 2px solid white; }
-::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+/* Modern Scrollbar Refinement */
+::-webkit-scrollbar {
+  width: 10px;
+}
 
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full border-[3px] border-solid border-slate-50;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300;
+}

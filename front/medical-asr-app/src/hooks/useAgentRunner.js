@@ -1,16 +1,18 @@
 import { useCallback, useState } from "react";
 import { useAgents } from "../contexts/AgentContext";
+import { useAuth } from "../contexts/AuthContext";
 import { analyseTodos, runAgent } from "../lib/api";
 
 /**
  * Orchestrates the multi-agent pipeline:
- * 1. Calls Claude to classify TODOs into agent assignments
+ * 1. Calls Backend to classify TODOs into agent assignments
  * 2. Spawns a "specialist agent" coroutine per assignment
  * 3. Updates AgentContext in real-time
  * 4. Pushes a notification when each agent finishes
  */
 export function useAgentRunner() {
   const { addAgents, updateAgent, pushNotification } = useAgents();
+  const { authHeader } = useAuth();
   const [isRunning, setIsRunning] = useState(false);
   const [routingError, setRoutingError] = useState(null);
 
@@ -22,7 +24,7 @@ export function useAgentRunner() {
 
       try {
         // ── Step 1: Route todos to agents ──────────────────────────
-        const assignments = await analyseTodos(todos);
+        const assignments = await analyseTodos(todos, authHeader);
 
         const newAgents = assignments.map((a, i) => ({
           id:       `agent-${Date.now()}-${i}`,
@@ -44,7 +46,7 @@ export function useAgentRunner() {
             updateAgent(agent.id, { status: "running", startedAt: Date.now() });
 
             try {
-              const result = await runAgent(agent.type, agent.todoRef);
+              const result = await runAgent(agent.type, agent.todoRef, authHeader);
               updateAgent(agent.id, {
                 status: "done",
                 result,
@@ -67,7 +69,7 @@ export function useAgentRunner() {
         setIsRunning(false);
       }
     },
-    [addAgents, updateAgent, pushNotification]
+    [addAgents, updateAgent, pushNotification, authHeader]
   );
 
   return { run, isRunning, routingError };
