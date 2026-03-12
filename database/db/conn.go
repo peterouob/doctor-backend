@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	registeredModel "github.com/peterouob/doctor-backend/model"
+	agentModel "github.com/peterouob/doctor-backend/services/agent/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -21,7 +22,8 @@ func ConnMysql() {
 		&registeredModel.Patient{},
 		&registeredModel.Record{},
 		&registeredModel.Primary{},
-		&registeredModel.Schedule{}); err != nil {
+		&registeredModel.Schedule{},
+		&agentModel.TodoItem{}); err != nil {
 		panic(fmt.Errorf("error in db.auto migrate"))
 	}
 

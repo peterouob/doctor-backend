@@ -2,16 +2,20 @@ package kafka
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/IBM/sarama"
 )
 
 func InitSaramaProducer(brokers []string) (sarama.AsyncProducer, error) {
+	// Enable Sarama internal logging for debugging
+	sarama.Logger = log.New(os.Stdout, "[Sarama] ", log.LstdFlags)
+
 	config := sarama.NewConfig()
 
 	config.Producer.RequiredAcks = sarama.WaitForLocal
-	config.Producer.Return.Successes = false
+	config.Producer.Return.Successes = true
 	config.Producer.Return.Errors = true
 
 	config.Producer.Compression = sarama.CompressionSnappy

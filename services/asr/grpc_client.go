@@ -54,7 +54,7 @@ func (c *TritonClient) InferWhisper(ctx context.Context, audioFloat32 []float32)
 		RawInputContents: [][]byte{audioBytes},
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	resp, err := c.client.ModelInfer(ctx, req)
@@ -67,12 +67,45 @@ func (c *TritonClient) InferWhisper(ctx context.Context, audioFloat32 []float32)
 	}
 
 	rawOutput := resp.RawOutputContents[0]
-
 	strLen := binary.LittleEndian.Uint32(rawOutput[0:4])
-
 	transcript := string(rawOutput[4 : 4+strLen])
 
 	return transcript, nil
+}
+
+func (c *TritonClient) InferLLM(ctx context.Context, prompt string) (string, error) {
+	strBytes := []byte(prompt)
+	inputBytes := make([]byte, 4+len(strBytes))
+	binary.LittleEndian.PutUint32(inputBytes[0:4], uint32(len(strBytes)))
+	copy(inputBytes[4:], strBytes)
+
+	req := &triton.ModelInferRequest{
+		ModelName:    "llm",
+		ModelVersion: "1",
+		Inputs: []*triton.ModelInferRequest_InferInputTensor{
+			{
+				Name:     "PROMPT",
+				Datatype: "BYTES",
+				Shape:    []int64{1},
+			},
+		},
+		RawInputContents: [][]byte{inputBytes},
+	}
+
+	resp, err := c.client.ModelInfer(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("triton llm infer failed: %w", err)
+	}
+
+	if len(resp.RawOutputContents) == 0 || len(resp.RawOutputContents[0]) <= 4 {
+		return "", fmt.Errorf("empty or invalid response from triton llm")
+	}
+
+	rawOutput := resp.RawOutputContents[0]
+	strLen := binary.LittleEndian.Uint32(rawOutput[0:4])
+	generatedText := string(rawOutput[4 : 4+strLen])
+
+	return generatedText, nil
 }
 
 const (
@@ -111,7 +144,11 @@ func (c *TritonClient) StreamAudio(ctx context.Context, sessionID string, audioS
 			buffer = append(buffer, chunk...)
 
 			if len(buffer) >= windowSize {
-				c.inferAndSend(ctx, sessionID, buffer[:windowSize], resultStreamChan)
+				// Copy audio data for async processing
+				audioCopy := make([]float32, windowSize)
+				copy(audioCopy, buffer[:windowSize])
+
+				go c.inferAndSend(ctx, sessionID, audioCopy, resultStreamChan)
 				buffer = buffer[stepSize:]
 			}
 		}
@@ -122,13 +159,18 @@ func (c *TritonClient) inferAndSend(ctx context.Context, sessionID string, audio
 	if isSilence(audio) {
 		return
 	}
+
+	// 1. ASR Inference (Whisper only)
 	transcript, err := c.InferWhisper(ctx, audio)
 	if err != nil {
+		log.Printf("⚠️ [Session %s] Whisper 推理失敗: %v", sessionID, err)
 		return
 	}
 	if transcript == "" {
 		return
 	}
+
+	log.Printf("✅ [Session %s] Raw: %s", sessionID, transcript)
 
 	resultStreamChan <- &model.ASREvent{
 		EventID:     uuid.New().String(),

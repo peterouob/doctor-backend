@@ -1,2 +1,5 @@
 # JetBrains IDEs
 .idea/
+/protobuf/triton/
+/ai_model_repo/
+/front/medical-asr-app/node_modules/

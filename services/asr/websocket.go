@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -28,14 +27,22 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
-			panic(fmt.Errorf("error upgrading websocket: %v", err))
+			log.Printf("error upgrading websocket: %v", err)
+			return
 		}
 
 		defer conn.Close()
 
+		// Try to get doctorId from query if not in param
 		doctorId := c.Param("doctorId")
+		if doctorId == "" {
+			doctorId = c.Query("doctorId")
+		}
+		if doctorId == "" {
+			doctorId = "unknown"
+		}
 
-		ctx, cancel := context.WithCancel(c)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		audioStreamC := make(chan []byte, 100)
@@ -45,10 +52,9 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 
 		go func() {
 			for asrEvent := range resultStreamC {
-
 				eventBytes, err := json.Marshal(asrEvent)
 				if err != nil {
-					log.Println("error marshalling event")
+					log.Printf("❌ Error marshalling ASREvent for Kafka: %v", err)
 					continue
 				}
 
@@ -59,8 +65,10 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 				}
 
 				producer.Input() <- msg
+				log.Printf("📡 Sent ASREvent to Kafka (Topic: %s, Key: %s): %s", msg.Topic, doctorId, asrEvent.Transcript)
 
 				if err := conn.WriteJSON(asrEvent); err != nil {
+					log.Printf("❌ Error writing ASREvent to WebSocket: %v", err)
 					return
 				}
 			}
@@ -101,6 +109,7 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 		}
 
 		close(audioStreamC)
+		log.Printf("🔌 WebSocket connection closed for doctor: %s", doctorId)
 	}
 }
 

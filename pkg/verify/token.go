@@ -51,20 +51,20 @@ func (t *Token) CreateToken() {
 	t.AccessId = claims["access_id"].(string)
 }
 
-func TokenVerify(tokenString string) *jwt.Token {
+func TokenVerify(tokenString string) (*jwt.Token, error) {
 	if TokenKey.Load() == nil {
 		TokenKey.Store(tokenKey)
 	}
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			panic(fmt.Sprintf("Unexpected signing method: %v", token.Header["alg"]))
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(TokenKey.Load().(string)), nil
 	})
 
 	if err != nil {
-		panic(fmt.Sprintf("Token parse error: %v", err))
+		return nil, err
 	}
 
-	return token
+	return token, nil
 }

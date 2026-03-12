@@ -14,8 +14,8 @@ func Cors() func(c *gin.Context) {
 		method := c.Request.Method
 		c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
 		c.Header("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Token")
-		c.Header("Access-Control-Expose-Headers", "Access-Control-Allow-Headers, Token")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Token, Authorization, Accept, X-Requested-With")
+		c.Header("Access-Control-Expose-Headers", "Access-Control-Allow-Headers, Token, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
 		if method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -48,8 +48,8 @@ func AuthByJWT() func(c *gin.Context) {
 			return
 		}
 
-		token := verify.TokenVerify(parts[1])
-		if token == nil || !token.Valid {
+		token, err := verify.TokenVerify(parts[1])
+		if err != nil || token == nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"code": -1,
 				"msg":  "Invalid or expired token",

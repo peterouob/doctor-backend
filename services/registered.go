@@ -41,7 +41,7 @@ var luaScript = `
 
 	local currentCount = redis.call('HGET',slotKey,targetSlot)
 
-	if currentCount == 0 or tonumber(currentCount) <= 0 then
+	if tonumber(currentCount) <= 0 then
 		return 0
 	end
 
@@ -81,6 +81,8 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"msg": "full in the time"})
 		return
 	}
+
+	// TODO: transport data to the database
 
 	c.JSON(http.StatusOK, gin.H{
 		"msg":  "success",
