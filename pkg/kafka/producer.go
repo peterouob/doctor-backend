@@ -33,5 +33,11 @@ func InitSaramaProducer(brokers []string) (sarama.AsyncProducer, error) {
 		}
 	}()
 
+	go func() {
+		for msg := range producer.Successes() {
+			log.Printf("✅ [Kafka 寫入成功] Topic: %s, Partition: %d, Offset: %d", msg.Topic, msg.Partition, msg.Offset)
+		}
+	}()
+
 	return producer, nil
 }

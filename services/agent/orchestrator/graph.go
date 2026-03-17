@@ -19,7 +19,6 @@ type OrchestratorOutput struct {
 }
 
 func NewOrchestrator(taskAgent *TaskAgent) *Orchestrator {
-	// 1. Create the single-item graph
 	sg := compose.NewGraph[*model.TodoItem, string]()
 
 	sg.AddLambdaNode("summarize", compose.InvokableLambda(taskAgent.Summarize))
@@ -58,13 +57,10 @@ func NewOrchestrator(taskAgent *TaskAgent) *Orchestrator {
 		panic(fmt.Errorf("failed to compile single orchestrator graph: %w", err))
 	}
 
-	// 2. Create the batch graph using the single runnable
 	bg := compose.NewGraph[any, *OrchestratorOutput]()
 
-	// Fetch node
 	bg.AddLambdaNode("fetch", compose.InvokableLambda(taskAgent.FetchPendingTodos))
 
-	// Batch execution node (wrap singleRunnable)
 	bg.AddLambdaNode("execute_batch", compose.InvokableLambda(func(ctx context.Context, input []*model.TodoItem) (*OrchestratorOutput, error) {
 		results := make([]string, len(input))
 		for i, item := range input {
@@ -80,7 +76,6 @@ func NewOrchestrator(taskAgent *TaskAgent) *Orchestrator {
 		}, nil
 	}))
 
-	// Connect
 	bg.AddEdge(compose.START, "fetch")
 	bg.AddEdge("fetch", "execute_batch")
 	bg.AddEdge("execute_batch", compose.END)

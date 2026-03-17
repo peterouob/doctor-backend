@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, Sparkles, RefreshCw, ChevronUp, ChevronDown, Activity, ClipboardList, Stethoscope, Calendar, Bell, ChevronRight, Bot } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAgents } from "../contexts/AgentContext";
-import { useAgentRunner } from "../hooks/useAgentRunner";
-import { useBackendAgentRunner } from "../hooks/useBackendAgentRunner";
 import AgentStatusPanel from "../components/AgentStatusPanel";
 import clsx from "clsx";
 
@@ -33,10 +31,12 @@ function PriorityBadge({ value }) {
 }
 
 export default function DashboardPage() {
-  const { user }                          = useAuth();
-  const { clearAll, agents, addAgents, pushNotification } = useAgents();
-  const { run, isRunning, routingError }  = useAgentRunner();
-  const { runBackendOrchestration, isProcessing, error: backendError } = useBackendAgentRunner();
+  const { user } = useAuth();
+  const { 
+    agents, pushNotification, 
+    runAIPipeline, isRunning, routingError,
+    runBackendOrchestration, isProcessing, backendError
+  } = useAgents();
 
   const [todos, setTodos] = useState(() => {
     try {
@@ -68,36 +68,6 @@ export default function DashboardPage() {
   };
 
   const removeTodo = (id) => setTodos((prev) => prev.filter((t) => t.ID !== id));
-
-  const handleBackendOrchestration = async () => {
-    try {
-      const data = await runBackendOrchestration();
-      const { items, results } = data;
-
-      if (items && items.length > 0) {
-        const newAgents = items.map((item, i) => ({
-          id:       `agent-backend-${Date.now()}-${i}`,
-          type:     item.Type,
-          label:    TYPE_LABEL[item.Type] || "後端任務",
-          todoRef:  item.Detail,
-          priority: item.Priority ?? 2,
-          status:   "done",
-          result:   results[i],
-          startedAt:   Date.now(),
-          finishedAt:  Date.now(),
-        }));
-
-        addAgents(newAgents);
-        newAgents.forEach(agent => {
-          pushNotification(agent.id, `${agent.label} (後端) 已完成`);
-        });
-      } else {
-        pushNotification("backend-orchestrator", "沒有待處理的後端事項");
-      }
-    } catch (err) {
-      pushNotification("backend-orchestrator", `後端編排失敗: ${err.message}`);
-    }
-  };
 
   const adjustPriority = (id, delta) => {
     setTodos((prev) =>
@@ -162,7 +132,7 @@ export default function DashboardPage() {
                   新增任務
                 </button>
                 <button
-                  onClick={handleBackendOrchestration}
+                  onClick={runBackendOrchestration}
                   disabled={isProcessing}
                   className="btn-secondary"
                   title="從資料庫讀取待辦事項並使用後端 Eino Graph 執行"
@@ -175,7 +145,7 @@ export default function DashboardPage() {
                   後端編排
                 </button>
                 <button
-                  onClick={() => run(todos)}
+                  onClick={() => runAIPipeline(todos)}
                   disabled={isRunning || todos.length === 0}
                   className="btn-primary min-w-[180px]"
                 >

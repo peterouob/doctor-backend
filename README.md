@@ -9,6 +9,7 @@
 
 ### 1. 系統邏輯架構
 系統採用微服務化與異步處理架構，確保語音轉錄的高可用性與低延遲。
+**目前先以單體服務為主**
 
 ```mermaid
 graph TD
@@ -62,8 +63,9 @@ sequenceDiagram
     BE->>AI: 5. Scribe Agent 自動修復語法錯誤
     Dr->>BE: 6. 請求生成 SOAP 醫療報告
     BE->>AI: 7. LLM 根據對話生成專業摘要
-    AI-->>BE: 8. 返回結構化報告
-    BE->>DB: 9. 儲存病歷紀錄與待辦事項 (TODO)
+    AI->>HIS: 8. 藉由agent同時摘要病患的病例重點
+    HIS-->>BE: 8. 由歷史病例重點以及LLM推理返回結構化報告
+    BE->>DB: 9. 儲存病歷紀錄以供檢閱修改
     BE-->>Dr: 10. 顯示最終病歷報告
     
     Note over Dr, DB: 任務編排流程 (Orchestration)
@@ -83,7 +85,7 @@ sequenceDiagram
 | 模組 | 功能點 | 狀態    | 技術棧 |
 | :--- | :--- |:------| :--- |
 | **基礎架構** | 資料庫/緩存/Kafka 環境搭建 | ✅ 已完成 | MySQL, Redis, Kafka |
-| **語音服務** | WebSocket 串流接收與 ASR 推理 | ✅ 已完成 | Whisper (Triton) |
+| **語音服務** | WebSocket 串流接收與 ASR 推理 | ✅ 已完成 | Whisper (目前有年包問題) |
 | **認證系統** | 醫師註冊/登入 (JWT) | ✅ 已完成 | Gin, JWT |
 | **AI Agents** | **Scribe Agent** (文字修正) | ✅ 已完成 | LLM, Kafka Consumer |
 | **AI Agents** | **Synthesizer Agent** (SOAP 生成) | ✅ 已完成 | LLM, Agentic Workflow |
@@ -95,10 +97,11 @@ sequenceDiagram
 
 ## 四、 技術棧總覽 (Technology Stack)
 
-- **Backend**: Go (Gin), GORM, Sarama (Kafka)
+- **Backend**: Go (Gin)
+- **Frontend**: React, Transformer js
 - **AI Orchestration**: CloudWeGo Eino (Graph, Chain, Lambda)
 - **AI Inference**: NVIDIA Triton Inference Server (gRPC)
-- **AI Models**: Whisper, Medical-specific LLM
+- **AI Models**: Whisper, Medical-specific LLM(本機上使用Qwen2-5-0.5b)
 - **Database**: MySQL (GORM), Redis
 - **Message Queue**: Apache Kafka
 - **Frontend**: React, Vite, Tailwind CSS, Lucide Icons
@@ -111,3 +114,5 @@ sequenceDiagram
 1. **RAG** 模組開發：整合外部醫療知識庫，提升 AI 回答的專業性與準確性。
 
 2. **歷史病例分析**：利用 AI 分析過往病歷，提供診療建議與預測，增加模型病例分析準確性，以及當收到病患預約時能夠自動分析病患過往病歷，讓醫師不需要翻閱之前的資料。
+
+3. **Stream**: 改善目前語音系統，使用streaming的方式即時產出SOAP

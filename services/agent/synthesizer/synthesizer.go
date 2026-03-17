@@ -27,7 +27,6 @@ func NewSynthesizerAgent(tritonClient *asr.TritonClient) *SynthesizerAgent {
 		tritonClient: tritonClient,
 	}
 
-	// Create Eino chain
 	chain := compose.NewChain[*SynthesizerInput, *SynthesizerOutput]()
 	chain.AppendLambda(compose.InvokableLambda(s.generateSOAP))
 
@@ -75,10 +74,8 @@ You are a senior clinical documentation specialist. Your task is to extract clin
 		return nil, fmt.Errorf("failed to call LLM for SOAP generation: %w", err)
 	}
 
-	// Clean up output to prevent repetition and hallucinations
 	soap = s.cleanOutput(soap)
 
-	// Ensure the output starts with the header if the LLM omitted it due to our prompt ending
 	if !strings.HasPrefix(strings.TrimSpace(soap), "# SOAP Note") {
 		soap = "# SOAP Note\n" + soap
 	}
@@ -87,7 +84,6 @@ You are a senior clinical documentation specialist. Your task is to extract clin
 }
 
 func (s *SynthesizerAgent) cleanOutput(soap string) string {
-	// Truncate at common hallucination delimiters
 	delimiters := []string{
 		"---",
 		"#### Explanation",

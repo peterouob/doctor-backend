@@ -1,0 +1,12 @@
+
+1. Frontend (前端) 實作建議：側重「前置過濾與傳輸效率」
+前端直接接觸硬體，適合處理需要即時反饋或節省資源的任務。
+*   VAD (Voice Activity Detection): 使用 WebAssembly 跑 Silero VAD 或 RNNoise。優點是沒說話就不傳送封包，大幅減輕後端壓力並省頻寬。
+*   AEC (Acoustic Echo Cancellation): 消除回音。這必須在前端做，因為前端才有「播放中的聲音」與「收到的聲音」的對照資訊。
+*   Resampling & Normalization: 目前後端寫死了 16kHz。前端處理好再傳，能省去後端轉換的 CPU 損耗。
+
+2. Backend (後端) 實作建議：側重「高品質模型處理」
+後端有充足的算力，適合跑無法在瀏覽器運作的大型神經網路模型。
+*   Neural De-noising (神經網路降噪): 如 DCCRN 或 Frans-denoiser。這能將嘈雜環境（如診間空調聲、背景交談）清乾淨，顯著提升 Whisper 的辨識率。
+*   Speaker Diarization (語者分離): 判斷哪一段是醫生說的，哪一段是病人說的。這需要全局音訊上下文，通常放在後端 ASR 流程中。
+*   Audio Super-Resolution: 若前端音源採樣率低，後端可用模型將音質補強後再餵給 Whisper。

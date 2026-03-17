@@ -9,8 +9,8 @@ import (
 	"github.com/peterouob/doctor-backend/pkg/kafka"
 	"github.com/peterouob/doctor-backend/router"
 	"github.com/peterouob/doctor-backend/services/agent"
+	"github.com/peterouob/doctor-backend/services/agent/llm"
 	"github.com/peterouob/doctor-backend/services/agent/orchestrator"
-	"github.com/peterouob/doctor-backend/services/agent/scribe"
 	"github.com/peterouob/doctor-backend/services/agent/synthesizer"
 	"github.com/peterouob/doctor-backend/services/asr"
 	"github.com/peterouob/doctor-backend/services/patient"
@@ -35,19 +35,19 @@ func main() {
 		panic(err)
 	}
 
-	scribeAgent := scribe.NewScribeAgent(tritonClient)
-	scribeConsumer, err := scribe.NewScribeConsumer(scribeAgent, kafkaBrokers)
+	synthesizerAgent := synthesizer.NewSynthesizerAgent(tritonClient)
+
+	scribeAgent := llm.NewScribeAgent(tritonClient)
+	scribeConsumer, err := llm.NewScribeConsumer(scribeAgent, synthesizerAgent, kafkaBrokers)
 	if err != nil {
 		panic(err)
 	}
 	go scribeConsumer.Start(context.Background(), "medical-asr-events")
 
-	synthesizerAgent := synthesizer.NewSynthesizerAgent(tritonClient)
-
 	taskAgent := orchestrator.NewTaskAgent(tritonClient)
 	taskOrchestrator := orchestrator.NewOrchestrator(taskAgent)
 
-	agentHandler := agent.NewAgentHandler(synthesizerAgent, taskAgent, taskOrchestrator)
+	agentHandler := agent.NewAgentHandler(synthesizerAgent, scribeAgent, taskAgent, taskOrchestrator)
 
 	r := gin.Default()
 	router.InitRouter(r, producer, tritonClient, agentHandler)

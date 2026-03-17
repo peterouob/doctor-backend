@@ -36,6 +36,7 @@ func (c *TritonClient) Close() {
 	c.conn.Close()
 }
 
+// InferWhisper TODO:tooooooooooooooooooo lag and cannot work
 func (c *TritonClient) InferWhisper(ctx context.Context, audioFloat32 []float32) (string, error) {
 	audioBytes := make([]byte, len(audioFloat32)*4)
 	for i, f := range audioFloat32 {
@@ -49,7 +50,7 @@ func (c *TritonClient) InferWhisper(ctx context.Context, audioFloat32 []float32)
 			{
 				Name:     "AUDIO_SIGNAL",
 				Datatype: "FP32",
-				Shape:    []int64{int64(len(audioFloat32))}},
+				Shape:    []int64{int64(len(audioFloat32))}}, // 還原為 1D Shape
 		},
 		RawInputContents: [][]byte{audioBytes},
 	}
@@ -57,17 +58,25 @@ func (c *TritonClient) InferWhisper(ctx context.Context, audioFloat32 []float32)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
+	log.Printf("[Triton] 發送推理請求: Model=whisper, Samples=%d", len(audioFloat32))
 	resp, err := c.client.ModelInfer(ctx, req)
 	if err != nil {
-		return "", fmt.Errorf("triton infer failed: %w", err)
+		return "", fmt.Errorf("Triton gRPC 呼叫失敗: %w", err)
 	}
 
-	if len(resp.RawOutputContents) == 0 || len(resp.RawOutputContents[0]) <= 4 {
-		return "", fmt.Errorf("empty or invalid response from triton")
+	if len(resp.RawOutputContents) == 0 {
+		return "", fmt.Errorf("Triton 回傳了空的 RawOutputContents")
 	}
 
 	rawOutput := resp.RawOutputContents[0]
+	if len(rawOutput) < 4 {
+		return "", fmt.Errorf("Triton 回傳數據長度不足 (%d bytes)", len(rawOutput))
+	}
+
 	strLen := binary.LittleEndian.Uint32(rawOutput[0:4])
+	if uint32(len(rawOutput)) < 4+strLen {
+		return "", fmt.Errorf("Triton 回傳字串長度與實際數據不符")
+	}
 	transcript := string(rawOutput[4 : 4+strLen])
 
 	return transcript, nil
@@ -110,10 +119,10 @@ func (c *TritonClient) InferLLM(ctx context.Context, prompt string) (string, err
 
 const (
 	SampleRate = 16000
-	WindowSecs = 4 // Reduced window for lower latency
-	StepSecs   = 4 // Non-overlapping window to prevent "sticky" repeats
+	WindowSecs = 4
+	StepSecs   = 4
 	MinSecs    = 1
-	SilenceRMS = float32(0.005) // Slightly more sensitive
+	SilenceRMS = float32(0.005)
 )
 
 func (c *TritonClient) StreamAudio(ctx context.Context, sessionID string, audioStreamChan <-chan []byte, resultStreamChan chan<- *model.ASREvent) {
@@ -159,8 +168,6 @@ func (c *TritonClient) inferAndSend(ctx context.Context, sessionID string, audio
 	if isSilence(audio) {
 		return
 	}
-
-	// 1. ASR Inference (Whisper only)
 	transcript, err := c.InferWhisper(ctx, audio)
 	if err != nil {
 		log.Printf("[Session %s] Whisper 推理失敗: %v", sessionID, err)

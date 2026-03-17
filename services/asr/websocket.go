@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/peterouob/doctor-backend/model"
 )
@@ -23,6 +26,22 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var (
+	activeConns = make(map[string]*websocket.Conn)
+	mu          sync.Mutex
+)
+
+// NotifyResult allows other packages to send results back to a specific client
+func NotifyResult(doctorId string, data interface{}) error {
+	mu.Lock()
+	conn, ok := activeConns[doctorId]
+	mu.Unlock()
+	if !ok {
+		return fmt.Errorf("client %s not connected", doctorId)
+	}
+	return conn.WriteJSON(data)
+}
+
 func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -31,99 +50,87 @@ func WSHandleStream(producer sarama.AsyncProducer, tritonClient *TritonClient) g
 			return
 		}
 
-		defer conn.Close()
-
-		// Try to get doctorId from query if not in param
-		doctorId := c.Param("doctorId")
+		doctorId := c.Query("doctorId")
 		if doctorId == "" {
-			doctorId = c.Query("doctorId")
-		}
-		if doctorId == "" {
-			doctorId = "unknown"
+			doctorId = "anonymous"
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		mu.Lock()
+		activeConns[doctorId] = conn
+		mu.Unlock()
 
-		audioStreamC := make(chan []byte, 100)
-		resultStreamC := make(chan *model.ASREvent, 10)
-
-		go tritonClient.StreamAudio(ctx, doctorId, audioStreamC, resultStreamC)
-
-		go func() {
-			for asrEvent := range resultStreamC {
-				eventBytes, err := json.Marshal(asrEvent)
-				if err != nil {
-					log.Printf("Error marshalling ASREvent for Kafka: %v", err)
-					continue
-				}
-
-				msg := &sarama.ProducerMessage{
-					Topic: "medical-asr-events",
-					Key:   sarama.StringEncoder(doctorId),
-					Value: sarama.ByteEncoder(eventBytes),
-				}
-
-				producer.Input() <- msg
-
-				if err := conn.WriteJSON(asrEvent); err != nil {
-					log.Printf("❌ Error writing ASREvent to WebSocket: %v", err)
-					return
-				}
-			}
+		defer func() {
+			mu.Lock()
+			delete(activeConns, doctorId)
+			mu.Unlock()
+			conn.Close()
 		}()
 
-		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		conn.SetPongHandler(func(string) error {
-			err := conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+		var fullAudio []float32
 
 		for {
 			messageType, pcmBytes, err := conn.ReadMessage()
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Println("expect stopped")
-				} else {
-					log.Println("stop record")
-				}
 				break
 			}
 
 			if messageType == websocket.BinaryMessage {
-				_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-
-				audioFloat32 := PcmBytesToFloat32(pcmBytes)
-				tritonPayload := Float32ToBytes(audioFloat32)
-				select {
-				case audioStreamC <- tritonPayload:
-				default:
+				var audioFloat32 []float32
+				if len(pcmBytes)%4 == 0 && len(pcmBytes) > 0 {
+					audioFloat32 = make([]float32, len(pcmBytes)/4)
+					for i := range audioFloat32 {
+						audioFloat32[i] = math.Float32frombits(binary.LittleEndian.Uint32(pcmBytes[i*4:]))
+					}
+				} else {
+					audioFloat32 = PcmBytesToFloat32(pcmBytes)
+				}
+				fullAudio = append(fullAudio, audioFloat32...)
+			} else if messageType == websocket.TextMessage {
+				if string(pcmBytes) == "EOS" {
+					break
 				}
 			}
 		}
 
-		close(audioStreamC)
+		if len(fullAudio) > 0 {
+			log.Printf("[WS] Starting Whisper inference for %s...", doctorId)
+			transcript, err := tritonClient.InferWhisper(context.Background(), fullAudio)
+			if err != nil || transcript == "" {
+				log.Printf("[WS] Whisper inference failed or empty: %v", err)
+				return
+			}
+
+			asrEvent := &model.ASREvent{
+				EventID:     uuid.New().String(),
+				SessionID:   doctorId,
+				Timestamp:   time.Now().UnixMilli(),
+				SpeakerRole: "doctor",
+				Transcript:  transcript,
+				IsFinal:     true,
+			}
+
+			_ = conn.WriteJSON(asrEvent)
+
+			eventBytes, _ := json.Marshal(asrEvent)
+			msg := &sarama.ProducerMessage{
+				Topic: "medical-asr-events",
+				Key:   sarama.StringEncoder(doctorId),
+				Value: sarama.ByteEncoder(eventBytes),
+			}
+			producer.Input() <- msg
+			log.Printf("[WS] Sent ASR to Kafka for %s", doctorId)
+
+			//time.Sleep(30 * time.Second)
+		}
 	}
 }
 
 func PcmBytesToFloat32(pcmData []byte) []float32 {
 	sampleCount := len(pcmData) / 2
 	floatData := make([]float32, sampleCount)
-
 	for i := 0; i < sampleCount; i++ {
 		sampleInt16 := int16(binary.LittleEndian.Uint16(pcmData[i*2:]))
 		floatData[i] = float32(sampleInt16) / 32768.0
 	}
 	return floatData
-}
-
-func Float32ToBytes(floatData []float32) []byte {
-	byteData := make([]byte, len(floatData)*4)
-	for i, f := range floatData {
-		binary.LittleEndian.PutUint32(byteData[i*4:], math.Float32bits(f))
-	}
-	return byteData
 }

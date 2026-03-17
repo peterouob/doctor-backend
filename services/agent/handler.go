@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/peterouob/doctor-backend/services/agent/llm"
 	"github.com/peterouob/doctor-backend/services/agent/model"
 	"github.com/peterouob/doctor-backend/services/agent/orchestrator"
 	"github.com/peterouob/doctor-backend/services/agent/synthesizer"
@@ -11,16 +12,26 @@ import (
 
 type AgentHandler struct {
 	synthesizerAgent *synthesizer.SynthesizerAgent
+	scribeAgent      *llm.ScribeAgent
 	taskAgent        *orchestrator.TaskAgent
 	orchestrator     *orchestrator.Orchestrator
 }
 
-func NewAgentHandler(synthesizerAgent *synthesizer.SynthesizerAgent, taskAgent *orchestrator.TaskAgent, orchestrator *orchestrator.Orchestrator) *AgentHandler {
+func NewAgentHandler(synthesizerAgent *synthesizer.SynthesizerAgent, scribeAgent *llm.ScribeAgent, taskAgent *orchestrator.TaskAgent, orchestrator *orchestrator.Orchestrator) *AgentHandler {
 	return &AgentHandler{
 		synthesizerAgent: synthesizerAgent,
+		scribeAgent:      scribeAgent,
 		taskAgent:        taskAgent,
 		orchestrator:     orchestrator,
 	}
+}
+
+func (h *AgentHandler) GetScribeAgent() *llm.ScribeAgent {
+	return h.scribeAgent
+}
+
+func (h *AgentHandler) GetSynthesizerAgent() *synthesizer.SynthesizerAgent {
+	return h.synthesizerAgent
 }
 
 func (h *AgentHandler) Analyze(c *gin.Context) {

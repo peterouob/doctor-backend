@@ -11,4 +11,4 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # 下載 transformers 與 numpy，同樣使用快取
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install transformers numpy
+    pip install transformers numpy huggingface_hub faster-whisper
